@@ -33,6 +33,13 @@ fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   }
 }
 
+fn insert(buf: &mut BTreeMap<String, Json>, key: &str, val: &str) -> Result<(), json::BuilderError> {
+  let val = try!(parse_rhs(&val));
+  buf.insert(key.to_owned(), val);
+  Ok(())
+}
+
+
 fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::BuilderError> {
   if is_array == false {
     let mut buf = BTreeMap::new();
@@ -41,14 +48,8 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::Builder
         continue;
       }
       let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
-      let key = parsed[0].clone();
       // FIXME: returns an error instead of assignment of "null"
-      let val = if parsed.len() != 2 {
-        try!(parse_rhs("null"))
-      } else {
-        try!(parse_rhs(&parsed[1]))
-      };
-      buf.insert(key, val);
+      try!(insert(&mut buf, &parsed[0], if parsed.len() == 2 { &parsed[1] } else { "null" }));
     }
     Ok(Json::Object(buf))
   } else {
