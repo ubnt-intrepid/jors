@@ -2,7 +2,7 @@ extern crate rustc_serialize;
 extern crate docopt;
 
 use std::io::BufRead;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use rustc_serialize::json::{self, Json};
 use docopt::Docopt;
 
@@ -24,20 +24,6 @@ struct Args {
   arg_params: Vec<String>,
 }
 
-enum ParseResult {
-  Array(Vec<Json>),
-  Object(HashMap<String, Json>),
-}
-
-impl rustc_serialize::Encodable for ParseResult {
-  fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-    match self {
-      &ParseResult::Array(ref arr) => arr.encode(s),
-      &ParseResult::Object(ref obj) => obj.encode(s),
-    }
-  }
-}
-
 fn parse_rhs(s: &str) -> Json {
   match Json::from_str(s) {
     Ok(val) => val,
@@ -45,9 +31,9 @@ fn parse_rhs(s: &str) -> Json {
   }
 }
 
-fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
+fn parse_input(lines: Vec<String>, is_array: bool) -> Json {
   if is_array == false {
-    let mut buf = HashMap::new();
+    let mut buf = BTreeMap::new();
     for line in lines {
       if line.trim().is_empty() {
         continue;
@@ -58,7 +44,7 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
       let val = parse_rhs(&parsed[1]);
       buf.insert(key, val);
     }
-    ParseResult::Object(buf)
+    Json::Object(buf)
   } else {
     let mut buf = Vec::new();
     for line in lines {
@@ -68,7 +54,7 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
       let val = parse_rhs(&line);
       buf.push(val);
     }
-    ParseResult::Array(buf)
+    Json::Array(buf)
   }
 }
 
