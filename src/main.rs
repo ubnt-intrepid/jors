@@ -9,6 +9,7 @@ use docopt::Docopt;
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
+  jors [-a]
   jors [-a] <params>...
   jors (-h | --help)
 
@@ -38,7 +39,10 @@ impl rustc_serialize::Encodable for ParseResult {
 }
 
 fn parse_rhs(s: &str) -> Json {
-  Json::from_str(s).unwrap()
+  match Json::from_str(s) {
+    Ok(val) => val,
+    Err(_) => Json::from_str(&format!("\"{}\"", s)).unwrap(),
+  }
 }
 
 fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
