@@ -45,6 +45,9 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
   if is_array == false {
     let mut buf = HashMap::new();
     for line in lines {
+      if line.trim().is_empty() {
+        continue;
+      }
       let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
       assert_eq!(parsed.len(), 2);
       let key = parsed[0].clone();
@@ -55,11 +58,54 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
   } else {
     let mut buf = Vec::new();
     for line in lines {
+      if line.trim().is_empty() {
+        continue;
+      }
       let val = parse_rhs(&line);
       buf.push(val);
     }
     ParseResult::Array(buf)
   }
+}
+
+#[test]
+fn test1() {
+  let input = r#"
+10
+20
+"aa"
+{"a":10}
+"#
+    .split('\n')
+    .map(|m| m.to_owned())
+    .collect();
+
+  parse_input(input, true);
+}
+
+#[test]
+fn test2() {
+  let input = r#"
+a = 10
+b = 2
+c = "hoge"
+"#
+    .split('\n')
+    .map(|m| m.to_owned())
+    .collect();
+
+  parse_input(input, false);
+}
+
+#[test]
+fn test3() {
+  let input = r#"
+"#
+    .split('\n')
+    .map(|m| m.to_owned())
+    .collect();
+
+  parse_input(input, true);
 }
 
 fn main() {
