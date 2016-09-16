@@ -9,7 +9,7 @@ use docopt::Docopt;
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
-  jors [-a]
+  jors [-a] <params>...
   jors (-h | --help)
 
 Options:
@@ -20,6 +20,7 @@ Options:
 #[derive(Debug, RustcDecodable)]
 struct Args {
   flag_array: bool,
+  arg_params: Vec<String>,
 }
 
 enum ParseResult {
@@ -36,15 +37,15 @@ impl rustc_serialize::Encodable for ParseResult {
   }
 }
 
-fn parse_rhs(s:&str) -> Json {
+fn parse_rhs(s: &str) -> Json {
   Json::from_str(s).unwrap()
 }
 
-fn parse_input<R: BufRead>(reader: R, is_array: bool) -> ParseResult {
+fn parse_input(lines: Vec<String>, is_array: bool) -> ParseResult {
   if is_array == false {
     let mut buf = HashMap::new();
-    for line in reader.lines() {
-      let parsed: Vec<_> = line.unwrap().splitn(2, '=').map(|l| l.trim().to_owned()).collect();
+    for line in lines {
+      let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
       assert_eq!(parsed.len(), 2);
       let key = parsed[0].clone();
       let val = parse_rhs(&parsed[1]);
@@ -53,8 +54,8 @@ fn parse_input<R: BufRead>(reader: R, is_array: bool) -> ParseResult {
     ParseResult::Object(buf)
   } else {
     let mut buf = Vec::new();
-    for line in reader.lines() {
-      let val = parse_rhs(&line.unwrap());
+    for line in lines {
+      let val = parse_rhs(&line);
       buf.push(val);
     }
     ParseResult::Array(buf)
@@ -65,7 +66,13 @@ fn main() {
   let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
   let is_array = args.flag_array;
 
-  let stdin = std::io::stdin();
-  let parsed = parse_input(stdin.lock(), is_array);
+  let parsed = if args.arg_params.len() == 0 {
+    let stdin = std::io::stdin();
+    let lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
+    parse_input(lines, is_array)
+  } else {
+    parse_input(args.arg_params, is_array)
+  };
+
   println!("{}", json::encode(&parsed).unwrap());
 }
