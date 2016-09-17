@@ -9,18 +9,20 @@ use docopt::Docopt;
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
-  jors [-a]
-  jors [-a] <params>...
+  jors [-a -p]
+  jors [-a -p] <params>...
   jors (-h | --help)
 
 Options:
-  -h --help   Show this message.
-  -a --array  treats standard input as an array. 
+  -h --help     Show this message.
+  -a --array    Treats standard input as an array.
+  -p --pretty   Pretty output. 
 ";
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
   flag_array: bool,
+  flag_pretty: bool,
   arg_params: Vec<String>,
 }
 
@@ -101,6 +103,7 @@ fn test3() {
 fn main() {
   let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
   let is_array = args.flag_array;
+  let is_pretty = args.flag_pretty;
 
   let parsed = if args.arg_params.len() == 0 {
     let stdin = std::io::stdin();
@@ -110,5 +113,9 @@ fn main() {
     parse_input(args.arg_params, is_array)
   };
 
-  println!("{}", json::encode(&parsed).unwrap());
+  if is_pretty {
+    println!("{}", json::as_pretty_json(&parsed).indent(2));
+  } else {
+    println!("{}", json::as_json(&parsed));
+  }
 }
