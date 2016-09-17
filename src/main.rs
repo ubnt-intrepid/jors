@@ -26,6 +26,18 @@ struct Args {
   arg_params: Vec<String>,
 }
 
+enum JorsError {
+  Json(json::ParserError),
+  OutOfRange,
+}
+
+impl From<json::ParserError> for JorsError {
+  fn from(err: json::ParserError) -> JorsError {
+    JorsError::Json(err)
+  }
+}
+
+
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   match Json::from_str(s) {
     Ok(val) => Ok(val),
@@ -33,14 +45,29 @@ fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   }
 }
 
-fn insert(buf: &mut BTreeMap<String, Json>, key: &str, val: &str) -> Result<(), json::BuilderError> {
-  let val = try!(parse_rhs(&val));
-  buf.insert(key.to_owned(), val);
-  Ok(())
+fn insert_nested(buf: &mut BTreeMap<String, Json>, key: &str, val: Json) -> Result<(), JorsError> {
+  let keys: Vec<_> = key.split('.').map(|s| s.trim().to_owned()).collect();
+  if keys.len() == 0 {
+    return Err(JorsError::OutOfRange);
+  }
+  insert_nested_impl(buf, keys.as_slice(), val)
 }
 
+fn insert_nested_impl(buf: &mut BTreeMap<String, Json>, keys: &[String], val: Json) -> Result<(), JorsError> {
+  if keys.len() == 1 {
+    buf.insert(keys[0].clone(), val);
+    Ok(())
+  } else {
+    let value = buf.entry(keys[0].clone()).or_insert(Json::Object(BTreeMap::new()));
+    if let Some(ref mut obj) = value.as_object_mut() {
+      insert_nested_impl(obj, &keys[1..], val)
+    } else {
+      Err(JorsError::OutOfRange)
+    }
+  }
+}
 
-fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::BuilderError> {
+fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
   if is_array == false {
     let mut buf = BTreeMap::new();
     for line in lines {
@@ -49,7 +76,13 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::Builder
       }
       let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
       // FIXME: returns an error instead of assignment of "null"
-      try!(insert(&mut buf, &parsed[0], if parsed.len() == 2 { &parsed[1] } else { "null" }));
+      let rhs = if parsed.len() == 2 {
+        &parsed[1]
+      } else {
+        "null"
+      };
+      let rhs = try!(parse_rhs(&rhs));
+      try!(insert_nested(&mut buf, &parsed[0], rhs));
     }
     Ok(Json::Object(buf))
   } else {
