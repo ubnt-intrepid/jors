@@ -1,8 +1,8 @@
 extern crate rustc_serialize;
 extern crate docopt;
 
-use std::io::BufRead;
 use std::collections::BTreeMap;
+use std::io::BufRead;
 use rustc_serialize::json::{self, Json};
 use docopt::Docopt;
 
@@ -26,14 +26,14 @@ struct Args {
   arg_params: Vec<String>,
 }
 
-fn parse_rhs(s: &str) -> Json {
+fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   match Json::from_str(s) {
-    Ok(val) => val,
-    Err(_) => Json::from_str(&format!("\"{}\"", s)).unwrap(),
+    Ok(val) => Ok(val),
+    Err(_) => Json::from_str(&format!("\"{}\"", s)),
   }
 }
 
-fn parse_input(lines: Vec<String>, is_array: bool) -> Json {
+fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::BuilderError> {
   if is_array == false {
     let mut buf = BTreeMap::new();
     for line in lines {
@@ -41,22 +41,26 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> Json {
         continue;
       }
       let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
-      assert_eq!(parsed.len(), 2);
       let key = parsed[0].clone();
-      let val = parse_rhs(&parsed[1]);
+      // FIXME: returns an error instead of assignment of "null"
+      let val = if parsed.len() != 2 {
+        try!(parse_rhs("null"))
+      } else {
+        try!(parse_rhs(&parsed[1]))
+      };
       buf.insert(key, val);
     }
-    Json::Object(buf)
+    Ok(Json::Object(buf))
   } else {
     let mut buf = Vec::new();
     for line in lines {
       if line.trim().is_empty() {
         continue;
       }
-      let val = parse_rhs(&line);
+      let val = try!(parse_rhs(&line));
       buf.push(val);
     }
-    Json::Array(buf)
+    Ok(Json::Array(buf))
   }
 }
 
@@ -105,13 +109,14 @@ fn main() {
   let is_array = args.flag_array;
   let is_pretty = args.flag_pretty;
 
-  let parsed = if args.arg_params.len() == 0 {
+  let lines = if args.arg_params.len() == 0 {
     let stdin = std::io::stdin();
     let lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
-    parse_input(lines, is_array)
+    lines
   } else {
-    parse_input(args.arg_params, is_array)
+    args.arg_params
   };
+  let parsed = parse_input(lines, is_array).unwrap_or_else(|_| std::process::exit(1));
 
   if is_pretty {
     println!("{}", json::as_pretty_json(&parsed).indent(2));
