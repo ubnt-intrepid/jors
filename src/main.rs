@@ -2,7 +2,7 @@ extern crate rustc_serialize;
 extern crate docopt;
 
 use std::collections::BTreeMap;
-use std::io::BufRead;
+use std::io::{self, BufRead, Write};
 use rustc_serialize::json::{self, Json};
 use docopt::Docopt;
 
@@ -116,7 +116,10 @@ fn main() {
   } else {
     args.arg_params
   };
-  let parsed = parse_input(lines, is_array).unwrap_or_else(|_| std::process::exit(1));
+  let parsed = parse_input(lines, is_array).unwrap_or_else(|e| {
+    writeln!(&mut io::stderr(), "{}", e).unwrap();
+    std::process::exit(1);
+  });
 
   if is_pretty {
     println!("{}", json::as_pretty_json(&parsed).indent(2));
