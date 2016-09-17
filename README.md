@@ -18,17 +18,29 @@ $ jors name=jo n=17 parser=false
 ```
 
 ```shell-session
-$ cat << EOF | jors
+$ cat << EOF | jors -p
 name=jo
 n=7
 parser= false
 EOF
-{"name":"jo","n":7,"parser":false}
+{
+  "n": 7,
+  "name": "jo",
+  "parser": false
+}
 ```
 
-## TODO
-- [ ] prety printing
-- [ ] support for nested data structure
+Nested structure
+```shell-session
+$ jors a.b.c=10
+{"a":{"b":{"c":10}}}
+
+$ cat << EOF | jors
+a.b.[] = 10
+a.b.[] = 20
+EOF
+{"a":{"b":[10,20]}}
+```
 
 ## License
 This software is released under the MIT license.
