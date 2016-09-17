@@ -26,6 +26,19 @@ struct Args {
   arg_params: Vec<String>,
 }
 
+#[derive(Debug)]
+enum JorsError {
+   Json(json::ParserError),
+   OutOfRange,
+ }
+ 
+ impl From<json::ParserError> for JorsError {
+   fn from(err: json::ParserError) -> JorsError {
+     JorsError::Json(err)
+   }
+ }
+
+
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   match Json::from_str(s) {
     Ok(val) => Ok(val),
@@ -33,7 +46,7 @@ fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   }
 }
 
-fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::BuilderError> {
+fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
   if is_array == false {
     let mut buf = BTreeMap::new();
     for line in lines {
@@ -42,12 +55,10 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, json::Builder
       }
       let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
       let key = parsed[0].clone();
-      // FIXME: returns an error instead of assignment of "null"
-      let val = if parsed.len() != 2 {
-        try!(parse_rhs("null"))
-      } else {
-        try!(parse_rhs(&parsed[1]))
-      };
+      if parsed.len() != 2 {
+        return Err(JorsError::OutOfRange);
+      }
+      let val = try!(parse_rhs(&parsed[1]));
       buf.insert(key, val);
     }
     Ok(Json::Object(buf))
@@ -117,7 +128,7 @@ fn main() {
     args.arg_params
   };
   let parsed = parse_input(lines, is_array).unwrap_or_else(|e| {
-    writeln!(&mut io::stderr(), "{}", e).unwrap();
+    writeln!(&mut io::stderr(), "{:?}", e).unwrap();
     std::process::exit(1);
   });
 
