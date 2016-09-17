@@ -9,22 +9,20 @@ use docopt::Docopt;
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
-  jors [-a -p -j]
-  jors [-a -p -j] <params>...
+  jors [-a -p]
+  jors [-a -p] <params>...
   jors (-h | --help)
 
 Options:
   -h --help     Show this message.
-  -a --array    Treat standard input as an array.
-  -p --pretty   Pretty output.
-  -j --jsonize  Parse the value as JSON.
+  -a --array    Treat inputs as an array.
+  -p --pretty   Pretty output. 
 ";
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
   flag_array: bool,
   flag_pretty: bool,
-  flag_jsonize: bool,
   arg_params: Vec<String>,
 }
 
@@ -86,7 +84,7 @@ fn insert_nested_impl(buf: &mut BTreeMap<String, Json>, keys: &[String], val: Js
   }
 }
 
-fn parse_input(lines: Vec<String>, is_array: bool, is_jsonize: bool) -> Result<Json, JorsError> {
+fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
   if is_array == false {
     let mut buf = BTreeMap::new();
     for line in lines {
@@ -98,11 +96,7 @@ fn parse_input(lines: Vec<String>, is_array: bool, is_jsonize: bool) -> Result<J
         return Err(JorsError::OutOfRange);
       }
 
-      let rhs = if is_jsonize {
-        try!(parse_rhs(&parsed[1]))
-      } else {
-        Json::String(parsed[1].to_owned())
-      };
+      let rhs = try!(parse_rhs(&parsed[1]));
       try!(insert_nested(&mut buf, &parsed[0], rhs));
     }
     Ok(Json::Object(buf))
@@ -163,7 +157,6 @@ fn main() {
   let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
   let is_array = args.flag_array;
   let is_pretty = args.flag_pretty;
-  let is_jsonize = args.flag_jsonize;
 
   let lines = if args.arg_params.len() == 0 {
     let stdin = std::io::stdin();
@@ -172,7 +165,7 @@ fn main() {
   } else {
     args.arg_params
   };
-  let parsed = parse_input(lines, is_array, is_jsonize).unwrap_or_else(|e| {
+  let parsed = parse_input(lines, is_array).unwrap_or_else(|e| {
     writeln!(&mut io::stderr(), "{:?}", e).unwrap();
     std::process::exit(1);
   });
