@@ -28,15 +28,15 @@ struct Args {
 
 #[derive(Debug)]
 enum JorsError {
-   Json(json::ParserError),
-   OutOfRange,
- }
- 
- impl From<json::ParserError> for JorsError {
-   fn from(err: json::ParserError) -> JorsError {
-     JorsError::Json(err)
-   }
- }
+  Json(json::ParserError),
+  OutOfRange,
+}
+
+impl From<json::ParserError> for JorsError {
+  fn from(err: json::ParserError) -> JorsError {
+    JorsError::Json(err)
+  }
+}
 
 
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
