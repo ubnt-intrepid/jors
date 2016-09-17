@@ -46,6 +46,44 @@ fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   }
 }
 
+fn insert_nested(buf: &mut BTreeMap<String, Json>, key: &str, val: Json) -> Result<(), JorsError> {
+  let keys: Vec<_> = key.split('.').map(|s| s.trim().to_owned()).collect();
+  if keys.len() == 0 {
+    return Err(JorsError::OutOfRange);
+  }
+  insert_nested_impl(buf, keys.as_slice(), val)
+}
+
+fn insert_nested_impl(buf: &mut BTreeMap<String, Json>, keys: &[String], val: Json) -> Result<(), JorsError> {
+  if keys.len() <= 1 {
+    buf.insert(keys[0].clone(), val);
+    Ok(())
+  } else {
+    if keys[1].trim() == "[]" {
+      // array
+      let value = buf.entry(keys[0].clone()).or_insert(Json::Array(Vec::new()));
+      if let Some(ref mut arr) = value.as_array_mut() {
+        // FIXME: deal with: a.b.[].d.e = sstr
+        if keys.len() != 2 {
+          return Err(JorsError::OutOfRange);
+        }
+        arr.push(val);
+        Ok(())
+      } else {
+        Err(JorsError::OutOfRange)
+      }
+    } else {
+      // object
+      let value = buf.entry(keys[0].clone()).or_insert(Json::Object(BTreeMap::new()));
+      if let Some(ref mut obj) = value.as_object_mut() {
+        insert_nested_impl(obj, &keys[1..], val)
+      } else {
+        Err(JorsError::OutOfRange)
+      }
+    }
+  }
+}
+
 fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
   if is_array == false {
     let mut buf = BTreeMap::new();
@@ -54,12 +92,12 @@ fn parse_input(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
         continue;
       }
       let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
-      let key = parsed[0].clone();
       if parsed.len() != 2 {
         return Err(JorsError::OutOfRange);
       }
-      let val = try!(parse_rhs(&parsed[1]));
-      buf.insert(key, val);
+
+      let rhs = try!(parse_rhs(&parsed[1]));
+      try!(insert_nested(&mut buf, &parsed[0], rhs));
     }
     Ok(Json::Object(buf))
   } else {
