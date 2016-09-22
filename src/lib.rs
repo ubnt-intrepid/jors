@@ -27,6 +27,9 @@ impl From<json::ParserError> for JorsError {
 
 
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
+  if s.trim().len() == 0 {
+    return Ok(Json::Null);
+  }
   match Json::from_str(s) {
     Ok(val) => Ok(val),
     Err(_) => Json::from_str(&format!("\"{}\"", s)),
