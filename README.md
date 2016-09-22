@@ -1,6 +1,9 @@
 # jors
 
-Rust's implementation of command-line JSON generator, a.k.a [jo](https://github.com/jpmens/jo).
+[![Build Status](https://travis-ci.org/ys-nuem/jors.svg?branch=master)](https://travis-ci.org/ys-nuem/jors)
+
+`jors` is an alternative of command-line JSON generator, written in Rust.
+This project is inspired by [jo](https://github.com/jpmens/jo).
 
 ## Installation
 
@@ -31,6 +34,7 @@ EOF
 ```
 
 Nested structure
+
 ```shell-session
 $ jors a.b.c=10
 {"a":{"b":{"c":10}}}
