@@ -1,0 +1,12 @@
+install:
+  - ps: Start-FileDownload 'https://static.rust-lang.org/rustup/dist/i686-pc-windows-msvc/rustup-init.exe'
+  - rustup-init.exe --no-modify-path -y --verbose
+  - SET PATH=%PATH%;%USERPROFILE%\.cargo\bin
+  - rustc -V
+  - cargo -V
+
+build_script:
+  - cargo build --verbose
+
+test_script:
+  - cargo test --verbose

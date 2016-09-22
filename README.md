@@ -1,6 +1,7 @@
 # jors
 
 [![Build Status](https://travis-ci.org/ys-nuem/jors.svg?branch=master)](https://travis-ci.org/ys-nuem/jors)
+[![Build status](https://ci.appveyor.com/api/projects/status/52admc367hopgtyr/branch/master?svg=true)](https://ci.appveyor.com/project/y-sasaki-nuem/jors/branch/master)
 
 `jors` is a command-line JSON generator, written in Rust.
 
