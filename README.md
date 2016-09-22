@@ -2,7 +2,8 @@
 
 [![Build Status](https://travis-ci.org/ys-nuem/jors.svg?branch=master)](https://travis-ci.org/ys-nuem/jors)
 
-`jors` is an alternative of command-line JSON generator, written in Rust.
+`jors` is a command-line JSON generator, written in Rust.
+
 This project is inspired by [jo](https://github.com/jpmens/jo).
 
 ## Installation
