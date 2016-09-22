@@ -33,6 +33,7 @@ struct Args {
 enum JorsError {
   Json(json::ParserError),
   OutOfRange,
+  Toml,
 }
 
 impl From<json::ParserError> for JorsError {
@@ -156,39 +157,62 @@ fn test3() {
   parse_input(input, true);
 }
 
+trait ToJson {
+  fn to_json(self) -> Json;
+}
+
+impl ToJson for toml::Value {
+  fn to_json(self) -> Json {
+    use toml::Value;
+    match self {
+      Value::Boolean(b) => Json::Boolean(b),
+      Value::Integer(i) => Json::I64(i),
+      Value::Float(v) => Json::F64(v),
+      Value::String(s) => Json::String(s),
+      Value::Datetime(dt) => Json::String(dt),
+      Value::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
+      Value::Table(tbl) => Json::Object(tbl.into_iter().map(|(k, v)| (k, v.to_json())).collect()),
+    }
+  }
+}
+
+impl ToJson for toml::Table {
+  fn to_json(self) -> Json {
+    toml::Value::Table(self).to_json()
+  }
+}
+
 fn main() {
   let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
   let is_array = args.flag_array;
   let is_pretty = args.flag_pretty;
   let is_toml = args.flag_toml;
 
-  if is_toml {
-    let stdin = std::io::stdin();
+  let stdin = std::io::stdin();
+
+  let parsed = if is_toml {
     let mut input = String::new();
     stdin.lock().read_to_string(&mut input).unwrap();
-    let parsed = toml::Parser::new(&input).parse().unwrap();
-    if is_pretty {
-      println!("{}", json::as_pretty_json(&parsed).indent(2));
+    toml::Parser::new(&input).parse().map(ToJson::to_json).ok_or(JorsError::Toml)
+  } else {
+    let lines;
+    if args.arg_params.len() == 0 {
+      lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
     } else {
-      println!("{}", json::as_json(&parsed));
+      lines = args.arg_params;
     }
 
+    parse_input(lines, is_array)
+  };
+
+  let parsed = parsed.unwrap_or_else(|e| {
+    writeln!(&mut io::stderr(), "{:?}", e).unwrap();
+    std::process::exit(1);
+  });
+
+  if is_pretty {
+    println!("{}", json::as_pretty_json(&parsed).indent(2));
   } else {
-    let lines = if args.arg_params.len() == 0 {
-      let stdin = std::io::stdin();
-      let lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
-      lines
-    } else {
-      args.arg_params
-    };
-    let parsed = parse_input(lines, is_array).unwrap_or_else(|e| {
-      writeln!(&mut io::stderr(), "{:?}", e).unwrap();
-      std::process::exit(1);
-    });
-    if is_pretty {
-      println!("{}", json::as_pretty_json(&parsed).indent(2));
-    } else {
-      println!("{}", json::as_json(&parsed));
-    }
+    println!("{}", json::as_json(&parsed));
   }
 }
