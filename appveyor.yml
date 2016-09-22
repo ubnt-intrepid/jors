@@ -1,3 +1,5 @@
+version: 0.0.{build}
+
 install:
   - ps: Start-FileDownload 'https://static.rust-lang.org/rustup/dist/i686-pc-windows-msvc/rustup-init.exe'
   - rustup-init.exe --no-modify-path -y --verbose
@@ -10,3 +12,10 @@ build_script:
 
 test_script:
   - cargo test --verbose
+
+after_build:
+  - cargo build --release
+
+artifacts:
+  - path: target/release/jors.exe
+    name: jors
