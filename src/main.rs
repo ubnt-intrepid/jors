@@ -8,8 +8,8 @@ use docopt::Docopt;
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
-  jors [-a -p -t]
-  jors [-a -p -t] <params>...
+  jors [-a -p -t -y]
+  jors [-a -p -t -y] <params>...
   jors (-h | --help)
 
 Options:
@@ -17,6 +17,7 @@ Options:
   -a --array    Treat inputs as an array.
   -p --pretty   Pretty output. 
   -t --toml     Treat standard input as TOML (experimental).
+  -y --yaml     Treat standard input as YAML (experimental).
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -24,6 +25,7 @@ struct Args {
   flag_array: bool,
   flag_pretty: bool,
   flag_toml: bool,
+  flag_yaml: bool,
   arg_params: Vec<String>,
 }
 
@@ -32,12 +34,15 @@ fn main() {
   let is_array = args.flag_array;
   let is_pretty = args.flag_pretty;
   let is_toml = args.flag_toml;
+  let is_yaml = args.flag_yaml;
 
   let stdin = std::io::stdin();
 
   let parsed = if is_toml {
     jors::read_toml(stdin.lock())
-  } else {
+  } else if is_yaml {
+    jors::read_yaml(stdin.lock())
+  } else{
     let lines;
     if args.arg_params.len() == 0 {
       lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();

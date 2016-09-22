@@ -1,9 +1,11 @@
 extern crate rustc_serialize;
 extern crate toml;
+extern crate yaml_rust as yaml;
 
 use std::collections::BTreeMap;
 use std::io::Read;
 use rustc_serialize::json::{self, Json};
+use yaml::{Yaml, YamlLoader};
 
 #[derive(Debug)]
 pub enum JorsError {
@@ -11,6 +13,8 @@ pub enum JorsError {
   Io(std::io::Error),
   OutOfRange,
   Toml,
+  YamlScan(yaml::ScanError),
+  Other(String),
 }
 
 impl From<std::io::Error> for JorsError {
@@ -25,6 +29,17 @@ impl From<json::ParserError> for JorsError {
   }
 }
 
+impl From<yaml::ScanError> for JorsError {
+  fn from(err: yaml::ScanError) -> JorsError {
+    JorsError::YamlScan(err)
+  }
+}
+
+impl<'a> From<&'a str> for JorsError {
+  fn from(err: &str) -> JorsError {
+    JorsError::Other(err.to_owned())
+  }
+}
 
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   if s.trim().len() == 0 {
@@ -78,7 +93,15 @@ pub fn read_toml<R: Read>(mut reader: R) -> Result<Json, JorsError> {
   let mut input = String::new();
   try!(reader.read_to_string(&mut input));
 
-  toml::Parser::new(&input).parse().map(ToJson::to_json).ok_or(JorsError::Toml)
+  toml::Parser::new(&input).parse().ok_or(JorsError::Toml).map(ToJson::to_json)
+}
+
+pub fn read_yaml<R: Read>(mut reader: R) -> Result<Json, JorsError> {
+  let mut input = String::new();
+  try!(reader.read_to_string(&mut input));
+
+  YamlLoader::load_from_str(&input).map_err(Into::into)
+    .and_then(|y| y.into_iter().nth(0).ok_or("The length of document is wrong.".into())).map(ToJson::to_json)
 }
 
 pub fn parse_lines(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
@@ -141,6 +164,21 @@ impl ToJson for toml::Value {
 impl ToJson for toml::Table {
   fn to_json(self) -> Json {
     toml::Value::Table(self).to_json()
+  }
+}
+
+impl ToJson for yaml::Yaml {
+  fn to_json(self) -> Json {
+    match self {
+      Yaml::Boolean(b) => Json::Boolean(b),
+      Yaml::Integer(i) => Json::I64(i),
+      Yaml::Real(s) => Json::F64(s.parse::<f64>().unwrap()),
+      Yaml::String(s) => Json::String(s),
+      Yaml::Null => Json::Null,
+      Yaml::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
+      Yaml::Hash(hash) => Json::Object(hash.into_iter().map(|(k,v)| (k.as_str().unwrap().to_owned(), v.to_json())).collect()),
+      _ => panic!("bad YAML value")
+    }
   }
 }
 
