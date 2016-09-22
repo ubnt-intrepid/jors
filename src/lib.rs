@@ -141,43 +141,29 @@ impl ToJson for toml::Table {
   }
 }
 
+#[cfg(test)]
+mod test {
+  use super::*;
 
-#[test]
-fn test1() {
-  let input = r#"
-10
-20
-"aa"
-{"a":10}
-"#
-    .split('\n')
-    .map(|m| m.to_owned())
-    .collect();
+  fn split(s: &str) -> Vec<String> {
+    s.split('\n').map(ToOwned::to_owned).collect()
+  }
 
-  parse_input(input, true);
-}
+  #[test]
+  fn test_array() {
+    let input = split("10\n20\n\"aa\"\n{\"a\":10}\n");
+    parse_lines(input, true).unwrap();
+  }
 
-#[test]
-fn test2() {
-  let input = r#"
-a = 10
-b = 2
-c = "hoge"
-"#
-    .split('\n')
-    .map(|m| m.to_owned())
-    .collect();
+  #[test]
+  fn test_keyval() {
+    let input = split("a = 10\nb = 2\nc = \"hoge\"\n");
+    parse_lines(input, false).unwrap();
+  }
 
-  parse_input(input, false);
-}
-
-#[test]
-fn test3() {
-  let input = r#"
-"#
-    .split('\n')
-    .map(|m| m.to_owned())
-    .collect();
-
-  parse_input(input, true);
+  #[test]
+  fn test_empty() {
+    let input = split("\n");
+    parse_lines(input, true).unwrap();
+  }
 }
