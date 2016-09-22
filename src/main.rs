@@ -1,28 +1,31 @@
 extern crate rustc_serialize;
 extern crate docopt;
+extern crate toml;
 
 use std::collections::BTreeMap;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, Read, Write};
 use rustc_serialize::json::{self, Json};
 use docopt::Docopt;
 
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
-  jors [-a -p]
-  jors [-a -p] <params>...
+  jors [-a -p -t]
+  jors [-a -p -t] <params>...
   jors (-h | --help)
 
 Options:
   -h --help     Show this message.
   -a --array    Treat inputs as an array.
   -p --pretty   Pretty output. 
+  -t --toml     Treat standard input as TOML (experimental).
 ";
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
   flag_array: bool,
   flag_pretty: bool,
+  flag_toml: bool,
   arg_params: Vec<String>,
 }
 
@@ -157,22 +160,35 @@ fn main() {
   let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
   let is_array = args.flag_array;
   let is_pretty = args.flag_pretty;
+  let is_toml = args.flag_toml;
 
-  let lines = if args.arg_params.len() == 0 {
+  if is_toml {
     let stdin = std::io::stdin();
-    let lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
-    lines
-  } else {
-    args.arg_params
-  };
-  let parsed = parse_input(lines, is_array).unwrap_or_else(|e| {
-    writeln!(&mut io::stderr(), "{:?}", e).unwrap();
-    std::process::exit(1);
-  });
+    let mut input = String::new();
+    stdin.lock().read_to_string(&mut input).unwrap();
+    let parsed = toml::Parser::new(&input).parse().unwrap();
+    if is_pretty {
+      println!("{}", json::as_pretty_json(&parsed).indent(2));
+    } else {
+      println!("{}", json::as_json(&parsed));
+    }
 
-  if is_pretty {
-    println!("{}", json::as_pretty_json(&parsed).indent(2));
   } else {
-    println!("{}", json::as_json(&parsed));
+    let lines = if args.arg_params.len() == 0 {
+      let stdin = std::io::stdin();
+      let lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
+      lines
+    } else {
+      args.arg_params
+    };
+    let parsed = parse_input(lines, is_array).unwrap_or_else(|e| {
+      writeln!(&mut io::stderr(), "{:?}", e).unwrap();
+      std::process::exit(1);
+    });
+    if is_pretty {
+      println!("{}", json::as_pretty_json(&parsed).indent(2));
+    } else {
+      println!("{}", json::as_json(&parsed));
+    }
   }
 }
