@@ -4,6 +4,13 @@ description = "Rust's implementation of command-line JSON generator, jo"
 version = "0.1.0"
 authors = ["Yusuke Sasaki <y_sasaki@nuem.nagoya-u.ac.jp>"]
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "jors"
+path = "src/main.rs"
+
 [dependencies]
 rustc-serialize = "*"
 docopt = "*"
