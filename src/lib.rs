@@ -100,8 +100,10 @@ pub fn read_yaml<R: Read>(mut reader: R) -> Result<Json, JorsError> {
   let mut input = String::new();
   try!(reader.read_to_string(&mut input));
 
-  YamlLoader::load_from_str(&input).map_err(Into::into)
-    .and_then(|y| y.into_iter().nth(0).ok_or("The length of document is wrong.".into())).map(ToJson::to_json)
+  YamlLoader::load_from_str(&input)
+    .map_err(Into::into)
+    .and_then(|y| y.into_iter().nth(0).ok_or("The length of document is wrong.".into()))
+    .map(ToJson::to_json)
 }
 
 pub fn parse_lines(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
@@ -176,8 +178,10 @@ impl ToJson for yaml::Yaml {
       Yaml::String(s) => Json::String(s),
       Yaml::Null => Json::Null,
       Yaml::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
-      Yaml::Hash(hash) => Json::Object(hash.into_iter().map(|(k,v)| (k.as_str().unwrap().to_owned(), v.to_json())).collect()),
-      _ => panic!("bad YAML value")
+      Yaml::Hash(hash) => {
+        Json::Object(hash.into_iter().map(|(k, v)| (k.as_str().unwrap().to_owned(), v.to_json())).collect())
+      }
+      _ => panic!("bad YAML value"),
     }
   }
 }

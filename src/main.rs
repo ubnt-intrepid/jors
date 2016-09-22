@@ -42,7 +42,7 @@ fn main() {
     jors::read_toml(stdin.lock())
   } else if is_yaml {
     jors::read_yaml(stdin.lock())
-  } else{
+  } else {
     let lines;
     if args.arg_params.len() == 0 {
       lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
