@@ -16,3 +16,8 @@ rustc-serialize = "*"
 docopt = "*"
 toml = "*"
 yaml-rust = "*"
+
+serde = "*"
+serde_json = "*"
+serde_yaml = "*"
+serde-transcode = "*"
