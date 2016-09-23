@@ -2,7 +2,9 @@ extern crate rustc_serialize;
 extern crate toml;
 extern crate yaml_rust as yaml;
 
+use std::io::Read;
 use std::collections::BTreeMap;
+use rustc_serialize::base64::{self, ToBase64};
 use rustc_serialize::json::{self, Json};
 use yaml::{Yaml, YamlLoader};
 
@@ -153,14 +155,26 @@ impl ToJson for yaml::Yaml {
   }
 }
 
-fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
+fn parse_rhs(s: &str) -> Result<Json, JorsError> {
   if s.trim().len() == 0 {
     return Ok(Json::Null);
   }
-  match Json::from_str(s) {
-    Ok(val) => Ok(val),
-    Err(_) => Json::from_str(&format!("\"{}\"", s)),
-  }
+  Json::from_str(s).or({
+    match s.trim().chars().nth(0) {
+      Some('@') => read_file(&s.trim()[1..]).map(Json::String),
+      Some('%') => read_file(&s.trim()[1..]).map(|s| Json::String(s.as_bytes().to_base64(base64::STANDARD))),
+      Some('#') => read_file(&s.trim()[1..]).and_then(|s| Json::from_str(&s).map_err(Into::into)),
+      Some(_) => Json::from_str(&format!("\"{}\"", s)).map_err(Into::into),
+      None => Err(JorsError::OutOfRange),
+    }
+  })
+}
+
+fn read_file(path: &str) -> Result<String, JorsError> {
+  let mut buf = String::new();
+  let mut file = try!(std::fs::File::open(path));
+  try!(file.read_to_string(&mut buf));
+  Ok(buf)
 }
 
 fn insert_nested(buf: &mut BTreeMap<String, Json>, key: &str, val: Json) -> Result<(), JorsError> {
