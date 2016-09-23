@@ -40,19 +40,35 @@ impl<'a> From<&'a str> for JorsError {
   }
 }
 
+pub enum InputMode {
+  KeyVal,
+  Array,
+  Yaml,
+  Toml,
+}
 
-pub fn parse_toml(input: String) -> Result<Json, JorsError> {
+pub fn make_json(input: String, mode: InputMode, is_pretty: bool) -> Result<String, JorsError> {
+  let parsed = match mode {
+    InputMode::Array => parse_array(input),
+    InputMode::KeyVal => parse_keyval(input),
+    InputMode::Yaml => parse_yaml(input),
+    InputMode::Toml => parse_toml(input),
+  };
+  parsed.map(|p| self::encode(p, is_pretty))
+}
+
+fn parse_toml(input: String) -> Result<Json, JorsError> {
   toml::Parser::new(&input).parse().ok_or(JorsError::Toml).map(ToJson::to_json)
 }
 
-pub fn parse_yaml(input: String) -> Result<Json, JorsError> {
+fn parse_yaml(input: String) -> Result<Json, JorsError> {
   YamlLoader::load_from_str(&input)
     .map_err(Into::into)
     .and_then(|y| y.into_iter().nth(0).ok_or("The length of document is wrong.".into()))
     .map(ToJson::to_json)
 }
 
-pub fn parse_array(inputs: String) -> Result<Json, JorsError> {
+fn parse_array(inputs: String) -> Result<Json, JorsError> {
   let mut buf = Vec::new();
 
   for line in inputs.split("\n") {
@@ -66,7 +82,7 @@ pub fn parse_array(inputs: String) -> Result<Json, JorsError> {
   Ok(Json::Array(buf))
 }
 
-pub fn parse_keyval(inputs: String) -> Result<Json, JorsError> {
+fn parse_keyval(inputs: String) -> Result<Json, JorsError> {
   let mut buf = BTreeMap::new();
 
   for line in inputs.split("\n") {
@@ -85,7 +101,7 @@ pub fn parse_keyval(inputs: String) -> Result<Json, JorsError> {
   Ok(Json::Object(buf))
 }
 
-pub fn encode(parsed: Json, is_pretty: bool) -> String {
+fn encode(parsed: Json, is_pretty: bool) -> String {
   if is_pretty {
     format!("{}", json::as_pretty_json(&parsed).indent(2))
   } else {
@@ -186,25 +202,20 @@ fn insert_nested_impl(buf: &mut BTreeMap<String, Json>, keys: &[String], val: Js
 }
 
 
-#[cfg(test)]
-mod test {
-  use super::*;
+#[test]
+fn test_array() {
+  let input = "10\n20\n\"aa\"\n{\"a\":10}\n";
+  parse_array(input.to_owned()).unwrap();
+}
 
-  #[test]
-  fn test_array() {
-    let input = "10\n20\n\"aa\"\n{\"a\":10}\n";
-    parse_array(input.to_owned()).unwrap();
-  }
+#[test]
+fn test_keyval() {
+  let input = "a = 10\nb = 2\nc = \"hoge\"\n";
+  parse_keyval(input.to_owned()).unwrap();
+}
 
-  #[test]
-  fn test_keyval() {
-    let input = "a = 10\nb = 2\nc = \"hoge\"\n";
-    parse_keyval(input.to_owned()).unwrap();
-  }
-
-  #[test]
-  fn test_empty() {
-    let input = "\n";
-    parse_array(input.to_owned()).unwrap();
-  }
+#[test]
+fn test_empty() {
+  let input = "\n";
+  parse_array(input.to_owned()).unwrap();
 }

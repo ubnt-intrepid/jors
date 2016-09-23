@@ -2,28 +2,27 @@ extern crate jors;
 extern crate docopt;
 extern crate rustc_serialize;
 
-use std::io::{self, Read, Write};
 use docopt::Docopt;
 
 const USAGE: &'static str = "
 Yet another command-line JSON generator
 Usage:
-  jors [-a -p -t -y]
-  jors [-a -p -t -y] <params>...
+  jors [-a -t -y] [-p]
+  jors [-a -t -y] [-p] <params>...
   jors (-h | --help)
 
 Options:
   -h --help     Show this message.
-  -a --array    Treat inputs as an array.
   -p --pretty   Pretty output. 
+  -a --array    Treat standard input / arguments as an array of JSON string.
   -t --toml     Treat standard input as TOML (experimental).
   -y --yaml     Treat standard input as YAML (experimental).
 ";
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
-  flag_array: bool,
   flag_pretty: bool,
+  flag_array: bool,
   flag_toml: bool,
   flag_yaml: bool,
   arg_params: Vec<String>,
@@ -31,12 +30,20 @@ struct Args {
 
 fn main() {
   let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
-  let is_array = args.flag_array;
-  let is_pretty = args.flag_pretty;
-  let is_toml = args.flag_toml;
-  let is_yaml = args.flag_yaml;
+
+  let mode;
+  if args.flag_array {
+    mode = jors::InputMode::Array;
+  } else if args.flag_yaml {
+    mode = jors::InputMode::Yaml;
+  } else if args.flag_toml {
+    mode = jors::InputMode::Toml;
+  } else {
+    mode = jors::InputMode::KeyVal;
+  }
 
   let inputs = if args.arg_params.len() == 0 {
+    use std::io::Read;
     let mut inputs = String::new();
     let stdin = std::io::stdin();
     stdin.lock().read_to_string(&mut inputs).unwrap();
@@ -45,20 +52,11 @@ fn main() {
     args.arg_params.join("\n")
   };
 
-  let parsed = if is_toml {
-    jors::parse_toml(inputs)
-  } else if is_yaml {
-    jors::parse_yaml(inputs)
-  } else if is_array {
-    jors::parse_array(inputs)
-  } else {
-    jors::parse_keyval(inputs)
-  };
-
-  let parsed = parsed.unwrap_or_else(|e| {
-    writeln!(&mut io::stderr(), "{:?}", e).unwrap();
+  let json = jors::make_json(inputs, mode, args.flag_pretty).unwrap_or_else(|e| {
+    use std::io::Write;
+    writeln!(&mut std::io::stderr(), "{:?}", e).unwrap();
     std::process::exit(1);
   });
 
-  println!("{}", jors::encode(parsed, is_pretty));
+  println!("{}", json);
 }
