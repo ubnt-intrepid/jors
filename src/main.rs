@@ -2,7 +2,7 @@ extern crate jors;
 extern crate docopt;
 extern crate rustc_serialize;
 
-use std::io::{self, BufRead, Write};
+use std::io::{self, Read, Write};
 use docopt::Docopt;
 
 const USAGE: &'static str = "
@@ -36,21 +36,23 @@ fn main() {
   let is_toml = args.flag_toml;
   let is_yaml = args.flag_yaml;
 
-  let stdin = std::io::stdin();
+  let inputs = if args.arg_params.len() == 0 {
+    let mut inputs = String::new();
+    let stdin = std::io::stdin();
+    stdin.lock().read_to_string(&mut inputs).unwrap();
+    inputs
+  } else {
+    args.arg_params.join("\n")
+  };
 
   let parsed = if is_toml {
-    jors::read_toml(stdin.lock())
+    jors::parse_toml(inputs)
   } else if is_yaml {
-    jors::read_yaml(stdin.lock())
+    jors::parse_yaml(inputs)
+  } else if is_array {
+    jors::parse_array(inputs)
   } else {
-    let lines;
-    if args.arg_params.len() == 0 {
-      lines = stdin.lock().lines().map(|line| line.unwrap().to_owned()).collect();
-    } else {
-      lines = args.arg_params;
-    }
-
-    jors::parse_lines(lines, is_array)
+    jors::parse_keyval(inputs)
   };
 
   let parsed = parsed.unwrap_or_else(|e| {

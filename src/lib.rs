@@ -3,7 +3,6 @@ extern crate toml;
 extern crate yaml_rust as yaml;
 
 use std::collections::BTreeMap;
-use std::io::Read;
 use rustc_serialize::json::{self, Json};
 use yaml::{Yaml, YamlLoader};
 
@@ -40,6 +39,59 @@ impl<'a> From<&'a str> for JorsError {
     JorsError::Other(err.to_owned())
   }
 }
+
+
+pub fn parse_toml(input: String) -> Result<Json, JorsError> {
+  toml::Parser::new(&input).parse().ok_or(JorsError::Toml).map(ToJson::to_json)
+}
+
+pub fn parse_yaml(input: String) -> Result<Json, JorsError> {
+  YamlLoader::load_from_str(&input)
+    .map_err(Into::into)
+    .and_then(|y| y.into_iter().nth(0).ok_or("The length of document is wrong.".into()))
+    .map(ToJson::to_json)
+}
+
+pub fn parse_array(lines: String) -> Result<Json, JorsError> {
+  let lines: Vec<_> = lines.split("\n").collect();
+  let mut buf = Vec::new();
+  for line in lines {
+    if line.trim().is_empty() {
+      continue;
+    }
+    let val = try!(parse_rhs(&line));
+    buf.push(val);
+  }
+  Ok(Json::Array(buf))
+}
+
+pub fn parse_keyval(lines: String) -> Result<Json, JorsError> {
+  let lines: Vec<_> = lines.split("\n").collect();
+  let mut buf = BTreeMap::new();
+  for line in lines {
+    if line.trim().is_empty() {
+      continue;
+    }
+    let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
+    if parsed.len() != 2 {
+      return Err(JorsError::OutOfRange);
+    }
+
+    let rhs = try!(parse_rhs(&parsed[1]));
+    try!(insert_nested(&mut buf, &parsed[0], rhs));
+  }
+  Ok(Json::Object(buf))
+}
+
+pub fn encode(parsed: Json, is_pretty: bool) -> String {
+  if is_pretty {
+    format!("{}", json::as_pretty_json(&parsed).indent(2))
+  } else {
+    format!("{}", json::as_json(&parsed))
+  }
+}
+
+
 
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   if s.trim().len() == 0 {
@@ -89,62 +141,8 @@ fn insert_nested_impl(buf: &mut BTreeMap<String, Json>, keys: &[String], val: Js
   }
 }
 
-pub fn read_toml<R: Read>(mut reader: R) -> Result<Json, JorsError> {
-  let mut input = String::new();
-  try!(reader.read_to_string(&mut input));
 
-  toml::Parser::new(&input).parse().ok_or(JorsError::Toml).map(ToJson::to_json)
-}
-
-pub fn read_yaml<R: Read>(mut reader: R) -> Result<Json, JorsError> {
-  let mut input = String::new();
-  try!(reader.read_to_string(&mut input));
-
-  YamlLoader::load_from_str(&input)
-    .map_err(Into::into)
-    .and_then(|y| y.into_iter().nth(0).ok_or("The length of document is wrong.".into()))
-    .map(ToJson::to_json)
-}
-
-pub fn parse_lines(lines: Vec<String>, is_array: bool) -> Result<Json, JorsError> {
-  if is_array == false {
-    let mut buf = BTreeMap::new();
-    for line in lines {
-      if line.trim().is_empty() {
-        continue;
-      }
-      let parsed: Vec<_> = line.splitn(2, '=').map(|l| l.trim().to_owned()).collect();
-      if parsed.len() != 2 {
-        return Err(JorsError::OutOfRange);
-      }
-
-      let rhs = try!(parse_rhs(&parsed[1]));
-      try!(insert_nested(&mut buf, &parsed[0], rhs));
-    }
-    Ok(Json::Object(buf))
-  } else {
-    let mut buf = Vec::new();
-    for line in lines {
-      if line.trim().is_empty() {
-        continue;
-      }
-      let val = try!(parse_rhs(&line));
-      buf.push(val);
-    }
-    Ok(Json::Array(buf))
-  }
-}
-
-pub fn encode(parsed: Json, is_pretty: bool) -> String {
-  if is_pretty {
-    format!("{}", json::as_pretty_json(&parsed).indent(2))
-  } else {
-    format!("{}", json::as_json(&parsed))
-  }
-}
-
-
-pub trait ToJson {
+trait ToJson {
   fn to_json(self) -> Json;
 }
 
@@ -190,25 +188,21 @@ impl ToJson for yaml::Yaml {
 mod test {
   use super::*;
 
-  fn split(s: &str) -> Vec<String> {
-    s.split('\n').map(ToOwned::to_owned).collect()
-  }
-
   #[test]
   fn test_array() {
-    let input = split("10\n20\n\"aa\"\n{\"a\":10}\n");
-    parse_lines(input, true).unwrap();
+    let input = "10\n20\n\"aa\"\n{\"a\":10}\n";
+    parse_array(input.to_owned()).unwrap();
   }
 
   #[test]
   fn test_keyval() {
-    let input = split("a = 10\nb = 2\nc = \"hoge\"\n");
-    parse_lines(input, false).unwrap();
+    let input = "a = 10\nb = 2\nc = \"hoge\"\n";
+    parse_keyval(input.to_owned()).unwrap();
   }
 
   #[test]
   fn test_empty() {
-    let input = split("\n");
-    parse_lines(input, true).unwrap();
+    let input = "\n";
+    parse_array(input.to_owned()).unwrap();
   }
 }
