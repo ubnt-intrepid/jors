@@ -14,6 +14,9 @@ This project is inspired by [jo](https://github.com/jpmens/jo).
 
 ## Installation
 
+### Manual download
+The prebuilt binaries can be downloaded from [here](https://github.com/ys-nuem/jors/releases).
+
 ### From source
 The binary is created into `$HOME/.cargo/bin` or `%USERPROFILE%\.cargo\bin`.
 
@@ -22,11 +25,6 @@ $ git clone https://github.com/ys-nuem/jors.git
 $ cd jors
 $ cargo install
 ```
-
-### Manual download
-The latest build of the binary for Windows can be downloaded via [here](https://ci.appveyor.com/project/y-sasaki-nuem/jors/branch/master/artifacts).
-
-The deployment of binaries for MacOSX and Linux has not supported yet. 
 
 ## Usage
 
