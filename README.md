@@ -48,6 +48,26 @@ EOF
 {"a":{"b":[10,20]}}
 ```
 
+```shell-session
+$ jors -p raw=@Cargo.toml encoded=%Cargo.toml
+{
+  "encoded": "W3BhY2thZ2VdCm5hbWUgPSAiam9ycyIKZGVzY3JpcHRpb24gPSAiUnVzdCdzIGltcGxlbWVudGF0aW9uIG9mIGNvbW1hbmQtbGluZSBKU09OIGdlbmVyYXRvciwgam8iCnZlcnNpb24gPSAiMC4xLjAiCmF1dGhvcnMgPSBbIll1c3VrZSBTYXNha2kgPHlfc2FzYWtpQG51ZW0ubmFnb3lhLXUuYWMuanA+Il0KCltsaWJdCnBhdGggPSAic3JjL2xpYi5ycyIKCltbYmluXV0KbmFtZSA9ICJqb3JzIgpwYXRoID0gInNyYy9tYWluLnJzIgoKW2RlcGVuZGVuY2llc10KcnVzdGMtc2VyaWFsaXplID0gIioiCmRvY29wdCA9ICIqIgp0b21sID0gIioiCnlhbWwtcnVzdCA9ICIqIg==",
+  "raw": "[package]\nname = \"jors\"\ndescription = \"Rust's implementation of command-line JSON generator, jo\"\nversion = \"0.1.0\"\nauthors = [\"Yusuke Sasaki <y_sasaki@nuem.nagoya-u.ac.jp>\"]\n\n[lib]\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"jors\"\npath = \"src/main.rs\"\n\n[dependencies]\nrustc-serialize = \"*\"\ndocopt = \"*\"\ntoml = \"*\"\nyaml-rust = \"*\""
+}
+```
+
+```shell-session
+$ jors -t < rustfmt.toml > rustfmt.json
+$ jors -p json=#rustfmt.json
+{
+  "json": {
+    "max_width": 120,
+    "tab_spaces": 2,
+    "write_mode": "Overwrite"
+  }
+}
+```
+
 ## License
 This software is released under the MIT license.
 See [LICENSE](LICENSE) for details.
