@@ -52,23 +52,24 @@ pub fn parse_yaml(input: String) -> Result<Json, JorsError> {
     .map(ToJson::to_json)
 }
 
-pub fn parse_array(lines: String) -> Result<Json, JorsError> {
-  let lines: Vec<_> = lines.split("\n").collect();
+pub fn parse_array(inputs: String) -> Result<Json, JorsError> {
   let mut buf = Vec::new();
-  for line in lines {
+
+  for line in inputs.split("\n") {
     if line.trim().is_empty() {
       continue;
     }
     let val = try!(parse_rhs(&line));
     buf.push(val);
   }
+
   Ok(Json::Array(buf))
 }
 
-pub fn parse_keyval(lines: String) -> Result<Json, JorsError> {
-  let lines: Vec<_> = lines.split("\n").collect();
+pub fn parse_keyval(inputs: String) -> Result<Json, JorsError> {
   let mut buf = BTreeMap::new();
-  for line in lines {
+
+  for line in inputs.split("\n") {
     if line.trim().is_empty() {
       continue;
     }
@@ -80,6 +81,7 @@ pub fn parse_keyval(lines: String) -> Result<Json, JorsError> {
     let rhs = try!(parse_rhs(&parsed[1]));
     try!(insert_nested(&mut buf, &parsed[0], rhs));
   }
+
   Ok(Json::Object(buf))
 }
 
@@ -92,6 +94,48 @@ pub fn encode(parsed: Json, is_pretty: bool) -> String {
 }
 
 
+
+trait ToJson {
+  fn to_json(self) -> Json;
+}
+
+impl ToJson for toml::Value {
+  fn to_json(self) -> Json {
+    use toml::Value;
+    match self {
+      Value::Boolean(b) => Json::Boolean(b),
+      Value::Integer(i) => Json::I64(i),
+      Value::Float(v) => Json::F64(v),
+      Value::String(s) => Json::String(s),
+      Value::Datetime(dt) => Json::String(dt),
+      Value::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
+      Value::Table(tbl) => Json::Object(tbl.into_iter().map(|(k, v)| (k, v.to_json())).collect()),
+    }
+  }
+}
+
+impl ToJson for toml::Table {
+  fn to_json(self) -> Json {
+    toml::Value::Table(self).to_json()
+  }
+}
+
+impl ToJson for yaml::Yaml {
+  fn to_json(self) -> Json {
+    match self {
+      Yaml::Boolean(b) => Json::Boolean(b),
+      Yaml::Integer(i) => Json::I64(i),
+      Yaml::Real(s) => Json::F64(s.parse::<f64>().unwrap()),
+      Yaml::String(s) => Json::String(s),
+      Yaml::Null => Json::Null,
+      Yaml::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
+      Yaml::Hash(hash) => {
+        Json::Object(hash.into_iter().map(|(k, v)| (k.as_str().unwrap().to_owned(), v.to_json())).collect())
+      }
+      _ => panic!("bad YAML value"),
+    }
+  }
+}
 
 fn parse_rhs(s: &str) -> Result<Json, json::BuilderError> {
   if s.trim().len() == 0 {
@@ -141,48 +185,6 @@ fn insert_nested_impl(buf: &mut BTreeMap<String, Json>, keys: &[String], val: Js
   }
 }
 
-
-trait ToJson {
-  fn to_json(self) -> Json;
-}
-
-impl ToJson for toml::Value {
-  fn to_json(self) -> Json {
-    use toml::Value;
-    match self {
-      Value::Boolean(b) => Json::Boolean(b),
-      Value::Integer(i) => Json::I64(i),
-      Value::Float(v) => Json::F64(v),
-      Value::String(s) => Json::String(s),
-      Value::Datetime(dt) => Json::String(dt),
-      Value::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
-      Value::Table(tbl) => Json::Object(tbl.into_iter().map(|(k, v)| (k, v.to_json())).collect()),
-    }
-  }
-}
-
-impl ToJson for toml::Table {
-  fn to_json(self) -> Json {
-    toml::Value::Table(self).to_json()
-  }
-}
-
-impl ToJson for yaml::Yaml {
-  fn to_json(self) -> Json {
-    match self {
-      Yaml::Boolean(b) => Json::Boolean(b),
-      Yaml::Integer(i) => Json::I64(i),
-      Yaml::Real(s) => Json::F64(s.parse::<f64>().unwrap()),
-      Yaml::String(s) => Json::String(s),
-      Yaml::Null => Json::Null,
-      Yaml::Array(arr) => Json::Array(arr.into_iter().map(ToJson::to_json).collect()),
-      Yaml::Hash(hash) => {
-        Json::Object(hash.into_iter().map(|(k, v)| (k.as_str().unwrap().to_owned(), v.to_json())).collect())
-      }
-      _ => panic!("bad YAML value"),
-    }
-  }
-}
 
 #[cfg(test)]
 mod test {
