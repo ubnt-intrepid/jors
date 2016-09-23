@@ -18,12 +18,13 @@ after_build:
 
 artifacts:
   - path: target/release/jors.exe
-    name: jors
 
 deploy:
   - provider: GitHub
     draft: false
     prerelease: false
+    auth_token:
+      secure: 2pbTMYqlP8jjJcPqVGqu96ssVUdoIOm4nWMnoGhmXMMqt9Eh8agP9zZtjSTg1Rwi
     on:
       branch: master
       appveyor_repo_tag: true
