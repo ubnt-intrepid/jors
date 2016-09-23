@@ -1,8 +1,12 @@
 version: 0.0.{build}
 
+environment:
+  TOOLCHAIN: stable
+  TARGET: x86_64-pc-windows-msvc
+
 install:
   - ps: Start-FileDownload 'https://static.rust-lang.org/rustup/dist/i686-pc-windows-msvc/rustup-init.exe'
-  - rustup-init.exe --no-modify-path --default-toolchain stable -y --verbose
+  - rustup-init.exe --no-modify-path --default-toolchain=%TOOLCHAIN% --default-host=%TARGET% -y --verbose
   - SET PATH=%PATH%;%USERPROFILE%\.cargo\bin
   - rustc -V
   - cargo -V
@@ -15,16 +19,18 @@ test_script:
 
 after_build:
   - cargo build --release
+  - copy target\release\jors.exe jors-%TARGET%.exe
 
 artifacts:
-  - path: target/release/jors.exe
+  - path: jors-$(TARGET).exe
 
 deploy:
-  - provider: GitHub
-    draft: false
-    prerelease: false
-    auth_token:
-      secure: 2pbTMYqlP8jjJcPqVGqu96ssVUdoIOm4nWMnoGhmXMMqt9Eh8agP9zZtjSTg1Rwi
-    on:
-      branch: master
-      appveyor_repo_tag: true
+  provider: GitHub
+  draft: false
+  prerelease: false
+  force_update: true
+  auth_token:
+    secure: 2pbTMYqlP8jjJcPqVGqu96ssVUdoIOm4nWMnoGhmXMMqt9Eh8agP9zZtjSTg1Rwi
+  on:
+    branch: master
+    appveyor_repo_tag: true
