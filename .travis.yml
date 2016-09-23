@@ -1,21 +1,35 @@
-language: rust
-
-rust:
-  - stable
-  - nightly
+language: generic
+sudo: required
+dist: trusty
 
 matrix:
-  allow_failures:
-    - nightly
+  include:
+    - os: linux
+      env: TOOLCHAIN=stable  TARGET=x86_64-unknown-linux-gnu
+    - os: osx
+      env: TOOLCHAIN=stable  TARGET=x86_64-apple-darwin
+
+# cache:
+#   directories: target
+
+install:
+  - curl -sSLf sh.rustup.rs | sh -s -- -y --default-toolchain="$TOOLCHAIN" --default-host="$TARGET" --no-modify-path --verbose
+  - export PATH="$HOME/.cargo/bin:$PATH"
+
+script:
+  - cargo build --verbose
+  - cargo test --verbose
 
 before_deploy:
   - cargo build --release
+  - cp target/release/jors jors-$TARGET
 
 deploy:
   provider: releases
   api_key:
     secure: DzHaRbvQamls//Cb8CBZwMDvTFQKB5gVKsl/Pz0x5mWkpvLS6cb9dvsP6ztp9HYwAdFhfRrnL1YDOFVfcg/JBSl4I8jl0kUfA4GkfpF1kLqyT/wq/iwUMqzJu/so4VIP4dOZTDLyfb/PCXP1f2AWZWzNp2YvM6u2dvuo8LWYxoqNHBR3r0grnayiRnfmva9SnyeoGFQ0sT5FlOy7h+rScsU1hua6Qhxr7lwGFHWZ95iOltYjKFHbZVMsQP/fYEBczHYCSEcCAUhAtWt2CmyFokNgCTKLCW/pukOgg2UrnYN+hqRR6dy7vp3cPLUcoPkusNFDAX+AZUHP2QtU3mhWrYKOuHq3gweD7BRCMIANnbqJrN3jlLuEsbf/ydfkBf3NINBSpweea+3KPmGusqikQYZkOddhRjDjmE+3fNrxEZgvUEU5Z+kwsdvGrdQCHVHJ+7hTKN6IJVZS+14pQQQyHhQmKqrlYyHbbDcl4lm419G2Mhxa1xk4eMQRpKvmdHczis5UZoJNNgWz/gO7X3JG40UJTGKLF8IDPH4/AlYJ1VqmecSn4dNIER+nab++yLks6g+TexlhGYn9PrdwWFfFB3IeTIM7E4vIHgwMqjYpUwBDZ1YWNbCLMRrACqBxt+fIKLOPr3s1sUXiPXUlzBQMPEJ1xPGs1FxFyN6rstH2qAI=
-  file: target/release/jors
+  file: jors-$TARGET
+  overwrite: true
   skip_cleanup: true
   on:
     repo: ys-nuem/jors
