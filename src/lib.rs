@@ -1,6 +1,7 @@
 extern crate rustc_serialize;
 extern crate toml;
 extern crate yaml_rust as yaml;
+extern crate rmp_serialize as msgpack;
 
 use std::io::Read;
 use std::collections::BTreeMap;
@@ -57,6 +58,21 @@ pub fn make_json(input: String, mode: InputMode, is_pretty: bool) -> Result<Stri
     InputMode::Toml => parse_toml(input),
   };
   parsed.map(|p| self::encode(p, is_pretty))
+}
+
+pub fn make_msgpack(input: String, mode: InputMode) -> Result<Vec<u8>, JorsError> {
+  use rustc_serialize::Encodable;
+
+  let parsed = try!(match mode {
+    InputMode::Array => parse_array(input),
+    InputMode::KeyVal => parse_keyval(input),
+    InputMode::Yaml => parse_yaml(input),
+    InputMode::Toml => parse_toml(input),
+  });
+
+  let mut buf = Vec::new();
+  parsed.encode(&mut msgpack::Encoder::new(&mut buf));
+  Ok(buf)
 }
 
 fn parse_toml(input: String) -> Result<Json, JorsError> {
