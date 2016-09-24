@@ -3,7 +3,7 @@ extern crate docopt;
 extern crate rustc_serialize;
 
 use docopt::Docopt;
-use std::io::{stdout, Write};
+use std::io::{stdin, stdout, Read, Write};
 
 const USAGE: &'static str = "
 Yet another command-line JSON generator
@@ -39,9 +39,8 @@ fn main() {
   };
 
   let inputs = if args.arg_params.len() == 0 {
-    use std::io::Read;
     let mut inputs = String::new();
-    let stdin = std::io::stdin();
+    let stdin = stdin();
     stdin.lock().read_to_string(&mut inputs).unwrap();
     inputs
   } else {
