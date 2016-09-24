@@ -64,7 +64,15 @@ pub enum InputMode {
   Toml,
 }
 
-pub fn make_json(input: String, mode: InputMode, is_pretty: bool) -> Result<String, JorsError> {
+pub fn make_output(input: String, mode: InputMode, is_json: bool, is_pretty: bool) -> Result<Vec<u8>, JorsError> {
+  if is_json {
+    make_json(input, mode, is_pretty).map(|json| Vec::from(json.as_bytes()))
+  } else {
+    make_msgpack(input, mode)
+  }
+}
+
+fn make_json(input: String, mode: InputMode, is_pretty: bool) -> Result<String, JorsError> {
   let parsed = match mode {
     InputMode::Array => parse_array(input),
     InputMode::KeyVal => parse_keyval(input),
@@ -74,7 +82,7 @@ pub fn make_json(input: String, mode: InputMode, is_pretty: bool) -> Result<Stri
   parsed.map(|p| self::encode(p, is_pretty))
 }
 
-pub fn make_msgpack(input: String, mode: InputMode) -> Result<Vec<u8>, JorsError> {
+fn make_msgpack(input: String, mode: InputMode) -> Result<Vec<u8>, JorsError> {
   use rustc_serialize::Encodable;
 
   let parsed = try!(match mode {
