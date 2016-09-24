@@ -1,4 +1,4 @@
-language: generic
+language: rust
 sudo: required
 dist: trusty
 
@@ -15,6 +15,8 @@ matrix:
 install:
   - curl -sSLf sh.rustup.rs | sh -s -- -y --default-toolchain="$TOOLCHAIN" --default-host="$TARGET" --no-modify-path --verbose
   - export PATH="$HOME/.cargo/bin:$PATH"
+  - rustc -V
+  - cargo -V
 
 script:
   - cargo build --verbose
