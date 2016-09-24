@@ -14,6 +14,7 @@ pub enum JorsError {
   Json(json::ParserError),
   Io(std::io::Error),
   FromUtf8(std::string::FromUtf8Error),
+  Msgpack(msgpack::encode::Error),
   OutOfRange,
   Toml,
   YamlScan(yaml::ScanError),
@@ -29,6 +30,12 @@ impl From<std::io::Error> for JorsError {
 impl From<std::string::FromUtf8Error> for JorsError {
   fn from(err: std::string::FromUtf8Error) -> JorsError {
     JorsError::FromUtf8(err)
+  }
+}
+
+impl From<msgpack::encode::Error> for JorsError {
+  fn from(err: msgpack::encode::Error) -> JorsError {
+    JorsError::Msgpack(err)
   }
 }
 
@@ -78,8 +85,7 @@ pub fn make_msgpack(input: String, mode: InputMode) -> Result<Vec<u8>, JorsError
   });
 
   let mut buf = Vec::new();
-  parsed.encode(&mut msgpack::Encoder::new(&mut buf));
-  Ok(buf)
+  parsed.encode(&mut msgpack::Encoder::new(&mut buf)).map_err(Into::into).and(Ok(buf))
 }
 
 fn parse_toml(input: String) -> Result<Json, JorsError> {

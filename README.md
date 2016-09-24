@@ -34,8 +34,8 @@ $ cargo install
 $ jors --help
 Yet another command-line JSON generator
 Usage:
-  jors [-a -t -y] [-p]
-  jors [-a -t -y] [-p] <params>...
+  jors [-a -t -y] [-m] [-p]
+  jors [-a -t -y] [-m] [-p] <params>...
   jors (-h | --help)
 
 Options:
@@ -44,6 +44,7 @@ Options:
   -a --array    Treat standard input / arguments as an array of JSON string.
   -t --toml     Treat standard input as TOML (experimental).
   -y --yaml     Treat standard input as YAML (experimental).
+  -m --msgpack  Use Msgpack instead of JSON (experimental).
 ```
 
 ### Basic usage

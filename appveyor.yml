@@ -16,15 +16,14 @@ install:
   - cargo -V
 
 build_script:
-  - cargo build --verbose
+  - cargo build --release --verbose
+  - copy target\release\jors.exe jors-%TARGET%.exe
 
 test_script:
-  - cargo test --verbose
+  - cargo test --release --verbose
 
-
-before_deploy:
-  - cargo build --release
-  - copy target\release\jors.exe jors-%TARGET%.exe
+artifacts:
+  - path: jors-$(TARGET).exe
 
 deploy:
   provider: GitHub
@@ -36,6 +35,3 @@ deploy:
   on:
     branch: master
     appveyor_repo_tag: true
-
-artifacts:
-  - path: jors-$(TARGET).exe
