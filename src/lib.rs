@@ -13,6 +13,7 @@ use yaml::{Yaml, YamlLoader};
 pub enum JorsError {
   Json(json::ParserError),
   Io(std::io::Error),
+  FromUtf8(std::string::FromUtf8Error),
   OutOfRange,
   Toml,
   YamlScan(yaml::ScanError),
@@ -22,6 +23,12 @@ pub enum JorsError {
 impl From<std::io::Error> for JorsError {
   fn from(err: std::io::Error) -> JorsError {
     JorsError::Io(err)
+  }
+}
+
+impl From<std::string::FromUtf8Error> for JorsError {
+  fn from(err: std::string::FromUtf8Error) -> JorsError {
+    JorsError::FromUtf8(err)
   }
 }
 
@@ -177,19 +184,23 @@ fn parse_rhs(s: &str) -> Result<Json, JorsError> {
   }
   Json::from_str(s).or({
     match s.trim().chars().nth(0) {
-      Some('@') => read_file(&s.trim()[1..]).map(Json::String),
-      Some('%') => read_file(&s.trim()[1..]).map(|s| Json::String(s.as_bytes().to_base64(base64::STANDARD))),
-      Some('#') => read_file(&s.trim()[1..]).and_then(|s| Json::from_str(&s).map_err(Into::into)),
+      Some('@') => read_file(&s.trim()[1..]).and_then(|f| String::from_utf8(f).map_err(Into::into).map(Json::String)),
+      Some('%') => read_file(&s.trim()[1..]).map(|s| Json::String(s.to_base64(base64::STANDARD))),
+      Some('#') => {
+        read_file(&s.trim()[1..])
+          .and_then(|f| String::from_utf8(f).map_err(Into::into))
+          .and_then(|s| Json::from_str(&s).map_err(Into::into))
+      }
       Some(_) => Json::from_str(&format!("\"{}\"", s)).map_err(Into::into),
       None => Err(JorsError::OutOfRange),
     }
   })
 }
 
-fn read_file(path: &str) -> Result<String, JorsError> {
-  let mut buf = String::new();
+fn read_file(path: &str) -> Result<Vec<u8>, JorsError> {
+  let mut buf = Vec::new();
   let mut file = try!(std::fs::File::open(path));
-  try!(file.read_to_string(&mut buf));
+  try!(file.read_to_end(&mut buf));
   Ok(buf)
 }
 

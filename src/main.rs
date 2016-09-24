@@ -44,8 +44,6 @@ fn main() {
     mode = jors::InputMode::KeyVal;
   }
 
-  let is_msgpack = args.flag_msgpack;
-
   let inputs = if args.arg_params.len() == 0 {
     use std::io::Read;
     let mut inputs = String::new();
@@ -56,23 +54,20 @@ fn main() {
     args.arg_params.join("\n")
   };
 
-  if is_msgpack {
-    use std::io::Write;
 
+  if args.flag_msgpack {
+    use std::io::Write;
     let parsed = jors::make_msgpack(inputs, mode).unwrap_or_else(|e| {
       writeln!(&mut std::io::stderr(), "{:?}", e).unwrap();
       std::process::exit(1);
     });
-
     std::io::stdout().write_all(&parsed[..]).unwrap();
-    return;
-  }
-
-  let json = jors::make_json(inputs, mode, args.flag_pretty).unwrap_or_else(|e| {
+  } else {
     use std::io::Write;
-    writeln!(&mut std::io::stderr(), "{:?}", e).unwrap();
-    std::process::exit(1);
-  });
-
-  println!("{}", json);
+    let json = jors::make_json(inputs, mode, args.flag_pretty).unwrap_or_else(|e| {
+      writeln!(&mut std::io::stderr(), "{:?}", e).unwrap();
+      std::process::exit(1);
+    });
+    std::io::stdout().write_all(json.as_bytes()).unwrap();
+  }
 }
